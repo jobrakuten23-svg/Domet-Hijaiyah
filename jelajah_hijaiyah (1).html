@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jelajah Hijaiyah — Game Edukasi Interaktif</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                        arabic: ['Amiri', 'serif']
+                    },
+                    colors: {
+                        night: {
+                            950: '#060b14',
+                            900: '#0b1324',
+                            800: '#111d36',
+                            700: '#192a4d'
+                        },
+                        emeraldGlow: '#10b981',
+                        goldWarm: '#fbbf24'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #060b14;
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Latar langit malam berbintang lembut */
+        .starry-bg {
+            background-image:
+                radial-gradient(1.5px 1.5px at 12% 18%, rgba(251, 191, 36, 0.55), transparent),
+                radial-gradient(1px 1px at 28% 72%, rgba(255, 255, 255, 0.4), transparent),
+                radial-gradient(2px 2px at 46% 24%, rgba(52, 211, 153, 0.45), transparent),
+                radial-gradient(1px 1px at 67% 64%, rgba(255, 255, 255, 0.35), transparent),
+                radial-gradient(1.5px 1.5px at 82% 22%, rgba(251, 191, 36, 0.5), transparent),
+                radial-gradient(1px 1px at 91% 80%, rgba(255, 255, 255, 0.35), transparent),
+                radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.14), transparent 55%),
+                radial-gradient(circle at 85% 15%, rgba(251, 191, 36, 0.09), transparent 45%);
+        }
+
+        .arabic-letter {
+            font-family: 'Amiri', serif;
+            line-height: 1.5;
+        }
+
+        .glass-card {
+            background: rgba(17, 29, 54, 0.72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .glass-card-gold {
+            background: linear-gradient(145deg, rgba(17, 29, 54, 0.88), rgba(11, 19, 36, 0.95));
+            border: 1px solid rgba(251, 191, 36, 0.28);
+            box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        /* Animasi kartu memori 3D */
+        .memory-card {
+            perspective: 900px;
+        }
+        .memory-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-inner,
+        .memory-card.matched .memory-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-front, .memory-back {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .memory-back {
+            transform: rotateY(180deg);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+            50% { box-shadow: 0 0 24px 4px rgba(16, 185, 129, 0.2); }
+        }
+        .speaking-glow {
+            animation: pulseGlow 1.3s infinite;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .pop-in {
+            animation: popIn 0.28s ease-out forwards;
+        }
+
+        .confetti-piece {
+            position: fixed;
+            top: -12px;
+            z-index: 60;
+            pointer-events: none;
+            border-radius: 3px;
+            animation: fallConfetti linear forwards;
+        }
+        @keyframes fallConfetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="starry-bg min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+    <!-- Toast Notifikasi Non-Blocking -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
+
+    <!-- Baris Kredit Pembuat di Bagian Paling Atas -->
+    <div class="bg-night-950/95 border-b border-amber-400/20 px-3 sm:px-6 py-1.5 text-center">
+        <div class="max-w-6xl mx-auto flex items-center justify-center gap-1.5 text-[11px] sm:text-xs text-slate-300">
+            <span class="text-amber-300">✦</span>
+            <span>Dibuat oleh <strong class="font-display font-bold text-amber-300">Domet, S.Pd.I</strong></span>
+            <span class="text-amber-300">✦</span>
+        </div>
+    </div>
+
+    <!-- HEADER UTAMA (Selalu tampilkan Profil Pemain, XP/Bintang, Level, & Kontrol) -->
+    <header class="sticky top-0 z-30 glass-card border-b border-slate-800/80 px-3 sm:px-6 py-2.5">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+            <!-- Brand & Tombol Beranda -->
+            <button id="brandHomeBtn" class="flex items-center gap-2.5 text-left group focus:outline-none" title="Kembali ke Menu Utama">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-teal-500 to-amber-400 p-[2px] shadow-lg group-hover:scale-105 transition">
+                    <div class="w-full h-full bg-night-900 rounded-[10px] flex items-center justify-center">
+                        <span class="arabic-letter text-2xl font-bold text-amber-300 leading-none">ي</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="font-display font-extrabold text-base sm:text-lg tracking-tight text-white flex items-center gap-1.5">
+                        <span>Jelajah Hijaiyah</span>
+                        <span class="hidden md:inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">28 Huruf</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Belajar seru &amp; interaktif</p>
+                </div>
+            </button>
+
+            <!-- Profil Pemain Aktif + Statistik -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+                <div id="playerProfileBadge" class="flex items-center gap-2.5 bg-night-900/90 border border-slate-700/80 rounded-2xl px-2.5 py-1.5">
+                    <span id="headerAvatar" class="text-xl leading-none" aria-hidden="true">⭐</span>
+                    <div class="leading-tight">
+                        <div class="flex items-center gap-1.5">
+                            <span id="headerPlayerName" class="text-xs sm:text-sm font-bold text-white max-w-[110px] sm:max-w-[150px] truncate">Petualang</span>
+                            <span id="headerPlayerLevel" class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-400/15 text-amber-300 border border-amber-400/30">Lv.1</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px] text-slate-300 mt-0.5">
+                            <span title="Total Bintang">⭐ <strong id="headerStars" class="text-amber-300">0</strong></span>
+                            <span>•</span>
+                            <span title="Total XP">✨ <strong id="headerXp" class="text-emerald-300">0</strong> XP</span>
+                            <span class="hidden lg:inline">•</span>
+                            <span id="headerMastery" class="hidden lg:inline text-teal-300 font-medium">0/28 Hafal</span>
+                        </div>
+                    </div>
+                    <button id="switchPlayerBtn" class="ml-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600/60 transition active:scale-95">
+                        Ganti Pemain
+                    </button>
+                </div>
+
+                <!-- Tombol Audio Mute/Unmute -->
+                <button id="muteToggleBtn" class="p-2.5 rounded-xl bg-night-900/90 hover:bg-night-800 border border-slate-700/80 text-slate-200 transition active:scale-95" title="Suara Efek & Pelafalan" aria-label="Toggle Suara">
+                    <span id="muteIcon" class="text-base leading-none">🔊</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-7">
+
+        <!-- NAVIGASI MODE / PETA -->
+        <nav aria-label="Mode Permainan" class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
+            <button data-view="home" class="nav-tab flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-display font-bold text-xs sm:text-sm transition active:scale-[0.98]">
+                <span>🏠</span> <span>Beranda</span>
+            </button>
+            <button data-view="flashcard" class="nav-tab flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-display font-bold text-xs sm:text-sm transition active:scale-[0.98]">
+                <span>📖</span> <span>Kenal &amp; Dengar</span>
+            </button>
+            <button data-view="quiz" class="nav-tab flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-display font-bold text-xs sm:text-sm transition active:scale-[0.98]">
+                <span>🎯</span> <span>Kuis Huruf</span>
+            </button>
+            <button data-view="matching" class="nav-tab flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-display font-bold text-xs sm:text-sm transition active:scale-[0.98]">
+                <span>🃏</span> <span>Cocokkan Kartu</span>
+            </button>
+        </nav>
+
+        <!-- VIEW 0: BERANDA + PETA KOLEKSI 28 HURUF HIJAIYAH -->
+        <section id="view-home" class="app-view space-y-6 pop-in">
+            <!-- Hero Banner -->
+            <div class="glass-card-gold rounded-3xl p-5 sm:p-7 relative overflow-hidden">
+                <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="space-y-2.5 max-w-2xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
+                            <span>🌙</span> <span id="heroGreeting">Selamat datang kembali!</span>
+                        </div>
+                        <h1 class="font-display font-extrabold text-2xl sm:text-4xl text-white leading-tight">
+                            Taklukkan <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-emerald-300">28 Huruf Hijaiyah</span> dengan Cara Seru!
+                        </h1>
+                        <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                            Dengarkan pelafalan huruf &amp; harakat, uji ketajaman telinga dan mata di kuis 10 soal, lalu latih ingatan lewat permainan cocokkan kartu. Semua progres tersimpan otomatis per nama pemain.
+                        </p>
+                    </div>
+
+                    <!-- Ringkasan Progres Pemain -->
+                    <div class="bg-night-950/75 border border-slate-700/70 rounded-2xl p-4 min-w-[240px] space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400 font-medium">Penguasaan Huruf</span>
+                            <span id="homeMasteryPercent" class="font-bold text-emerald-300">0%</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-night-800 rounded-full overflow-hidden border border-slate-700/60">
+                            <div id="homeMasteryBar" class="h-full bg-gradient-to-r from-emerald-400 to-amber-300 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+                            <div class="bg-night-900 rounded-xl p-2 border border-slate-800">
+                                <div id="homeStatMastered" class="font-display font-extrabold text-base text-emerald-300">0</div>
+                                <div class="text-[10px] text-slate-400">Dikuasai</div>
+                            </div>
+                            <div class="bg-night-900 rounded-xl p-2 border border-slate-800">
+                                <div id="homeStatStars" class="font-display font-extrabold text-base text-amber-300">0</div>
+                                <div class="text-[10px] text-slate-400">Bintang</div>
+                            </div>
+                            <div class="bg-night-900 rounded-xl p-2 border border-slate-800">
+                                <div id="homeStatStreak" class="font-display font-extrabold text-base text-cyan-300">0</div>
+                                <div class="text-[10px] text-slate-400">Best Kombo</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 Kartu Mode Utama -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="switchView('flashcard')" class="glass-card hover:border-emerald-400/50 rounded-3xl p-5 text-left transition group flex flex-col justify-between active:scale-[0.99]">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-2xl group-hover:scale-110 transition">📖</span>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300">Mode 1</span>
+                        </div>
+                        <h2 class="font-display font-bold text-lg text-white mb-1">Kenal &amp; Dengar Huruf</h2>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Flashcard interaktif dengan harakat Fathah, Kasrah, Dhammah, Sukun, contoh kata sehari-hari, &amp; audio pelafalan.
+                        </p>
+                    </div>
+                    <div class="mt-4 text-xs font-bold text-emerald-300 flex items-center gap-1 group-hover:translate-x-1 transition">
+                        <span>Mulai Belajar</span> <span>→</span>
+                    </div>
+                </button>
+
+                <button onclick="switchView('quiz')" class="glass-card hover:border-amber-400/50 rounded-3xl p-5 text-left transition group flex flex-col justify-between active:scale-[0.99]">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="w-12 h-12 rounded-2xl bg-amber-400/15 border border-amber-300/30 flex items-center justify-center text-2xl group-hover:scale-110 transition">🎯</span>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300">Mode 2 • 10 Soal</span>
+                        </div>
+                        <h2 class="font-display font-bold text-lg text-white mb-1">Kuis Tebak Huruf &amp; Suara</h2>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Tebak huruf dari suara atau nama &amp; petunjuknya. Kumpulkan kombo beruntun, XP, dan bintang penguasaan!
+                        </p>
+                    </div>
+                    <div class="mt-4 text-xs font-bold text-amber-300 flex items-center gap-1 group-hover:translate-x-1 transition">
+                        <span>Mainkan Kuis</span> <span>→</span>
+                    </div>
+                </button>
+
+                <button onclick="switchView('matching')" class="glass-card hover:border-teal-400/50 rounded-3xl p-5 text-left transition group flex flex-col justify-between active:scale-[0.99]">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="w-12 h-12 rounded-2xl bg-teal-400/15 border border-teal-300/30 flex items-center justify-center text-2xl group-hover:scale-110 transition">🃏</span>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-teal-400/15 text-teal-300">Mode 3 • Memori</span>
+                        </div>
+                        <h2 class="font-display font-bold text-lg text-white mb-1">Cocokkan Kartu Huruf</h2>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Pasangkan kartu bentuk hijaiyah dengan nama atau bunyi hurufnya dalam jumlah langkah paling efisien!
+                        </p>
+                    </div>
+                    <div class="mt-4 text-xs font-bold text-teal-300 flex items-center gap-1 group-hover:translate-x-1 transition">
+                        <span>Buka Papan Kartu</span> <span>→</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- PETA / KOLEKSI PENGUASAAN 28 HURUF HIJAIYAH -->
+            <div class="glass-card rounded-3xl p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="font-display font-bold text-lg sm:text-xl text-white flex items-center gap-2">
+                            <span>🗺️</span> <span>Peta Koleksi 28 Huruf Hijaiyah</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            Klik huruf mana saja untuk langsung melatihnya di Flashcard. Bintang bertambah dari latihan &amp; kuis!
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] flex-wrap">
+                        <span class="px-2.5 py-1 rounded-lg bg-night-900 border border-slate-700 text-slate-300">Belum Dilatih</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/30 text-amber-200">⭐ Sedang Hafal</span>
+                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">⭐⭐⭐ Dikuasai</span>
+                    </div>
+                </div>
+
+                <div id="masteryGrid" class="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 lg:grid-cols-14 gap-2">
+                    <!-- Diisi otomatis via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 1: KENAL & DENGAR HURUF (FLASHCARD INTERAKTIF) -->
+        <section id="view-flashcard" class="app-view hidden space-y-5 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-display font-bold text-xl sm:text-2xl text-white">Kenal &amp; Dengar Huruf</h2>
+                    <p class="text-xs text-slate-400">Pilih harakat untuk melihat perubahan bentuk &amp; bunyi, lalu tekan putar suara.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400">Huruf ke-</span>
+                    <span id="fcIndexBadge" class="px-3 py-1 rounded-xl bg-night-800 border border-slate-700 font-display font-bold text-sm text-amber-300">1 / 28</span>
+                </div>
+            </div>
+
+            <!-- Pemilih Harakat -->
+            <div class="glass-card rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-semibold text-slate-300 px-1">Pilih Harakat:</span>
+                <div id="harakatSelector" class="flex flex-wrap gap-1.5 sm:gap-2">
+                    <!-- Tombol harakat diisi JS -->
+                </div>
+            </div>
+
+            <!-- Kartu Utama Flashcard -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                <div class="lg:col-span-7 glass-card-gold rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center relative">
+                    <div class="w-full flex items-center justify-between text-xs text-slate-400">
+                        <span id="fcMasteryStars" class="text-amber-300 font-semibold">☆☆☆ Belum dikuasai</span>
+                        <span id="fcHarakatLabel" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">Tanpa Harakat</span>
+                    </div>
+
+                    <!-- Huruf Hijaiyah Besar -->
+                    <div class="my-4 flex flex-col items-center">
+                        <div id="fcArabicDisplay" class="arabic-letter text-8xl sm:text-9xl font-bold text-white drop-shadow-[0_6px_24px_rgba(251,191,36,0.25)] select-none">
+                            ا
+                        </div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <span id="fcName" class="font-display font-extrabold text-2xl sm:text-3xl text-amber-300">Alif</span>
+                            <span class="text-slate-500">•</span>
+                            <span id="fcSoundReading" class="font-display font-bold text-lg sm:text-xl text-emerald-300">a / i / u</span>
+                        </div>
+                        <p id="fcTranslitNote" class="text-xs text-slate-400 mt-1">Transliterasi: <span class="text-slate-200 font-medium">a</span></p>
+                    </div>
+
+                    <!-- Tombol Audio & Tandai Sudah Paham -->
+                    <div class="w-full flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        <button id="fcPlayAudioBtn" class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-night-950 font-display font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition active:scale-95">
+                            <span>🔊</span> <span>Dengarkan Pelafalan</span>
+                        </button>
+                        <button id="fcPracticeStarBtn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-night-800 hover:bg-night-700 border border-amber-400/40 text-amber-300 font-display font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                            <span>⭐</span> <span>Catat Latihan (+15 XP)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Panel Contoh Kata & Info Makhraj/Tips -->
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <div class="glass-card rounded-3xl p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-wider text-emerald-300 mb-3">Contoh Kata Sehari-hari</div>
+                            <div class="bg-night-950/75 border border-slate-800 rounded-2xl p-4 text-center">
+                                <div id="fcExampleArabic" class="arabic-letter text-4xl sm:text-5xl font-bold text-white mb-1">أَسَدٌ</div>
+                                <div id="fcExampleLatin" class="text-sm font-bold text-amber-300">Asadun</div>
+                                <div id="fcExampleMeaning" class="text-xs text-slate-300 mt-0.5">Artinya: <span class="font-semibold text-white">Singa</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-night-900/80 border border-slate-800 rounded-2xl p-4 space-y-1.5">
+                            <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                <span>💡</span> <span>Tips Pelafalan</span>
+                            </div>
+                            <p id="fcTipText" class="text-xs text-slate-300 leading-relaxed">
+                                Ucapkan huruf dengan lembut dan jelas dari rongga mulut/tenggorokan sesuai harakat yang dipilih.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Navigasi Sebelumnya / Berikutnya -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="fcPrevBtn" class="glass-card hover:bg-night-800 py-3.5 px-4 rounded-2xl font-display font-bold text-sm text-white flex items-center justify-center gap-2 transition active:scale-95">
+                            <span>←</span> <span>Sebelumnya</span>
+                        </button>
+                        <button id="fcNextBtn" class="glass-card hover:bg-night-800 py-3.5 px-4 rounded-2xl font-display font-bold text-sm text-white flex items-center justify-center gap-2 transition active:scale-95">
+                            <span>Berikutnya</span> <span>→</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strip Cepat 28 Huruf -->
+            <div class="glass-card rounded-2xl p-3">
+                <div id="fcQuickStrip" class="flex gap-1.5 overflow-x-auto pb-1">
+                    <!-- Diisi JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: KUIS TEBAK HURUF & SUARA (10 SOAL PER RONDE) -->
+        <section id="view-quiz" class="app-view hidden space-y-5 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-display font-bold text-xl sm:text-2xl text-white">Kuis Tebak Huruf &amp; Suara</h2>
+                    <p class="text-xs text-slate-400">10 soal seru per ronde • Dapatkan bintang untuk huruf yang dijawab benar!</p>
+                </div>
+
+                <!-- Toggle Timer Santai -->
+                <div class="flex items-center gap-2 bg-night-900 border border-slate-700/80 rounded-2xl px-3 py-2">
+                    <label for="quizTimerToggle" class="text-xs font-semibold text-slate-300 cursor-pointer select-none">
+                        ⏱️ Timer Santai (15d)
+                    </label>
+                    <input id="quizTimerToggle" type="checkbox" checked class="w-4 h-4 accent-emerald-400 rounded cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Kotak Kuis Aktif -->
+            <div id="quizActiveBox" class="glass-card-gold rounded-3xl p-5 sm:p-8 space-y-6">
+                <!-- Status Ronde -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span id="quizQuestionCounter" class="px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-display font-bold text-xs sm:text-sm">
+                            Soal 1 / 10
+                        </span>
+                        <span id="quizComboBadge" class="px-3 py-1 rounded-xl bg-amber-400/15 text-amber-300 border border-amber-400/30 font-display font-bold text-xs sm:text-sm">
+                            🔥 Kombo: 0
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="font-display font-bold text-sm text-white">Skor: <span id="quizScoreText" class="text-emerald-300">0</span></span>
+                        <span id="quizTimerPill" class="px-3 py-1 rounded-xl bg-night-950 border border-slate-700 font-display font-bold text-xs sm:text-sm text-amber-300">
+                            15s
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar 10 Soal -->
+                <div class="w-full h-2 bg-night-950 rounded-full overflow-hidden">
+                    <div id="quizProgressBar" class="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 transition-all duration-300" style="width: 10%"></div>
+                </div>
+
+                <!-- Prompt Pertanyaan -->
+                <div class="text-center space-y-3 py-2">
+                    <div id="quizPromptTypeLabel" class="inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-night-800 text-teal-300 border border-teal-500/25">
+                        Tantangan Suara
+                    </div>
+                    <h3 id="quizPromptTitle" class="font-display font-extrabold text-lg sm:text-2xl text-white">
+                        Dengarkan bunyi huruf berikut, lalu pilih huruf yang tepat!
+                    </h3>
+                    <p id="quizPromptSubtitle" class="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+                        Tekan tombol putar suara di bawah jika ingin mendengarkan ulang.
+                    </p>
+
+                    <div id="quizAudioTriggerWrap" class="pt-2 flex justify-center">
+                        <button id="quizReplayAudioBtn" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-night-950 font-display font-extrabold text-sm shadow-lg flex items-center gap-2 transition active:scale-95">
+                            <span>🔊</span> <span>Putar Suara Huruf</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 Pilihan Jawaban -->
+                <div id="quizOptionsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <!-- Diisi JS -->
+                </div>
+
+                <!-- Feedback & Tombol Lanjut -->
+                <div id="quizFeedbackBar" class="hidden rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="space-y-0.5">
+                        <div id="quizFeedbackTitle" class="font-display font-bold text-sm sm:text-base">Benar!</div>
+                        <div id="quizFeedbackDetail" class="text-xs text-slate-300">Penjelasan singkat.</div>
+                    </div>
+                    <button id="quizNextQuestionBtn" class="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-night-950 font-display font-bold text-xs sm:text-sm shrink-0 transition active:scale-95">
+                        Soal Berikutnya →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ringkasan Akhir Ronde Kuis -->
+            <div id="quizSummaryBox" class="hidden glass-card-gold rounded-3xl p-6 sm:p-8 text-center space-y-5">
+                <div class="text-5xl">🏆</div>
+                <div class="space-y-1">
+                    <h3 class="font-display font-extrabold text-2xl sm:text-3xl text-white">Ronde Kuis Selesai!</h3>
+                    <p id="quizSummaryMessage" class="text-sm text-slate-300">Hebat sekali, latihanmu makin mantap!</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
+                    <div class="bg-night-950/80 border border-slate-800 rounded-2xl p-3.5">
+                        <div id="sumCorrect" class="font-display font-extrabold text-xl text-emerald-300">0/10</div>
+                        <div class="text-[11px] text-slate-400">Jawaban Benar</div>
+                    </div>
+                    <div class="bg-night-950/80 border border-slate-800 rounded-2xl p-3.5">
+                        <div id="sumScore" class="font-display font-extrabold text-xl text-amber-300">0</div>
+                        <div class="text-[11px] text-slate-400">Total Skor</div>
+                    </div>
+                    <div class="bg-night-950/80 border border-slate-800 rounded-2xl p-3.5">
+                        <div id="sumXpEarned" class="font-display font-extrabold text-xl text-teal-300">+0 XP</div>
+                        <div class="text-[11px] text-slate-400">XP Didapat</div>
+                    </div>
+                    <div class="bg-night-950/80 border border-slate-800 rounded-2xl p-3.5">
+                        <div id="sumStarsEarned" class="font-display font-extrabold text-xl text-yellow-300">+0 ⭐</div>
+                        <div class="text-[11px] text-slate-400">Bintang Huruf</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button id="quizPlayAgainBtn" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-night-950 font-display font-extrabold text-sm shadow-lg transition active:scale-95">
+                        Main Ronde Baru
+                    </button>
+                    <button onclick="switchView('home')" class="px-6 py-3 rounded-2xl bg-night-800 hover:bg-night-700 border border-slate-700 text-white font-display font-bold text-sm transition active:scale-95">
+                        Lihat Peta Huruf
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: COCOKKAN KARTU (MEMORY / MATCHING GAME) -->
+        <section id="view-matching" class="app-view hidden space-y-5 pop-in">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-display font-bold text-xl sm:text-2xl text-white">Cocokkan Kartu Huruf</h2>
+                    <p class="text-xs text-slate-400">Pasangkan huruf hijaiyah dengan nama/bunyi pasangannya seefisien mungkin!</p>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <select id="matchingPairsSelect" class="bg-night-900 border border-slate-700 text-white text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-400">
+                        <option value="6">6 Pasang (12 Kartu)</option>
+                        <option value="8">8 Pasang (16 Kartu)</option>
+                    </select>
+                    <button id="matchingRestartBtn" class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-night-950 font-display font-bold text-xs sm:text-sm transition active:scale-95">
+                        ↻ Acak Ulang
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bar Statistik Permainan Kartu -->
+            <div class="glass-card rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+                <div class="flex items-center gap-4">
+                    <span>Langkah: <strong id="matchMovesText" class="font-display text-amber-300">0</strong></span>
+                    <span>Cocok: <strong id="matchFoundText" class="font-display text-emerald-300">0 / 6</strong></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span>Waktu: <strong id="matchTimeText" class="font-display text-teal-300">00:00</strong></span>
+                    <span>Skor: <strong id="matchScoreText" class="font-display text-white">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Grid Kartu Memori -->
+            <div id="matchingBoard" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                <!-- Kartu diisi JS -->
+            </div>
+
+            <!-- Banner Menang Cocokkan Kartu -->
+            <div id="matchingWinBanner" class="hidden glass-card-gold rounded-3xl p-6 text-center space-y-3">
+                <div class="text-4xl">🎉</div>
+                <h3 class="font-display font-extrabold text-2xl text-white">Semua Pasangan Berhasil Cocok!</h3>
+                <p id="matchingWinSummary" class="text-xs sm:text-sm text-slate-300"></p>
+                <button id="matchingPlayNextBtn" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-night-950 font-display font-extrabold text-sm shadow-lg transition active:scale-95">
+                    Main Lagi
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL SAMBUTAN / GANTI & KELOLA PROFIL PEMAIN -->
+    <div id="playerModal" class="fixed inset-0 z-50 hidden bg-night-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-card-gold rounded-3xl w-full max-w-lg p-5 sm:p-7 space-y-5 pop-in max-h-[92vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 mb-1.5">
+                        <span>✨</span> <span>Profil Petualang Hijaiyah</span>
+                    </div>
+                    <h2 id="playerModalTitle" class="font-display font-extrabold text-xl sm:text-2xl text-white">
+                        Siapa Namamu?
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Simpan namamu agar bintang, XP, dan penguasaan 28 huruf hijaiyah tercatat otomatis.
+                    </p>
+                </div>
+                <button id="closePlayerModalBtn" class="hidden px-2.5 py-1 rounded-xl bg-night-800 hover:bg-night-700 text-slate-300 text-sm font-bold">✕</button>
+            </div>
+
+            <!-- Form Input Nama & Pilih Avatar -->
+            <form id="playerForm" class="space-y-4">
+                <div>
+                    <label for="playerNameInput" class="block text-xs font-bold text-amber-300 mb-1.5">Nama Pemain</label>
+                    <input id="playerNameInput" type="text" maxlength="24" required placeholder="Contoh: Aisyah, Faris, atau Kak Raka..."
+                        class="w-full px-4 py-3 rounded-2xl bg-night-950 border border-slate-700 focus:border-emerald-400 focus:outline-none text-sm text-white placeholder-slate-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-amber-300 mb-2">Pilih Avatar Lucu</label>
+                    <div id="avatarPicker" class="grid grid-cols-6 gap-2">
+                        <!-- Diisi JS -->
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-night-950 font-display font-extrabold text-sm sm:text-base shadow-lg transition active:scale-[0.99]">
+                    Mulai Jelajah Hijaiyah 🚀
+                </button>
+            </form>
+
+            <!-- Daftar Pemain Tersimpan -->
+            <div id="savedProfilesSection" class="border-t border-slate-800 pt-4 space-y-2.5 hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-300">Pemain Tersimpan di Perangkat Ini</span>
+                    <span id="savedProfilesCount" class="text-[11px] text-slate-400">0 profil</span>
+                </div>
+                <div id="savedProfilesList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Diisi JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * =====================================================================
+         * 1. DATA 28 HURUF HIJAIYAH & HARAKAT
+         * =====================================================================
+         */
+        const HIJAIYAH_LETTERS = [
+            { id: 'alif', name: 'Alif', base: 'ا', sound: 'a / i / u', translit: 'a', exampleAr: 'أَسَدٌ', exampleLat: 'Asadun', exampleId: 'Singa', tip: 'Diucapkan ringan dari pangkal tenggorokan/mulut tanpa hambatan.' },
+            { id: 'ba', name: 'Ba', base: 'ب', sound: 'ba', translit: 'b', exampleAr: 'بَابٌ', exampleLat: 'Bābun', exampleId: 'Pintu', tip: 'Katupkan kedua bibir dengan lembut lalu lepaskan.' },
+            { id: 'ta', name: 'Ta', base: 'ت', sound: 'ta', translit: 't', exampleAr: 'تُفَّاحٌ', exampleLat: 'Tuffāḥun', exampleId: 'Apel', tip: 'Sentuhkan ujung lidah ke pangkal gigi seri atas dengan ringan.' },
+            { id: 'tsa', name: 'Tsa', base: 'ث', sound: 'tsa', translit: 'ts', exampleAr: 'ثَعْلَبٌ', exampleLat: 'Tsa‘labun', exampleId: 'Rubah', tip: 'Keluar sedikit ujung lidah di antara gigi atas dan bawah, bunyi mendesis lembut.' },
+            { id: 'jim', name: 'Jim', base: 'ج', sound: 'ja', translit: 'j', exampleAr: 'جَمَلٌ', exampleLat: 'Jamalun', exampleId: 'Unta', tip: 'Tempelkan bagian tengah lidah ke langit-langit tengah.' },
+            { id: 'ha_kecil', name: 'Ha', base: 'ح', sound: 'ḥa', translit: 'ḥ', exampleAr: 'حُوتٌ', exampleLat: 'Ḥūtun', exampleId: 'Ikan Paus', tip: 'Hembuskan udara hangat dari tengah tenggorokan dengan jelas.' },
+            { id: 'kha', name: 'Kha', base: 'خ', sound: 'kha', translit: 'kh', exampleAr: 'خُبْزٌ', exampleLat: 'Khubzun', exampleId: 'Roti', tip: 'Bunyi gesekan halus di tenggorokan bagian atas, seperti "kh".' },
+            { id: 'dal', name: 'Dal', base: 'د', sound: 'da', translit: 'd', exampleAr: 'دَرْسٌ', exampleLat: 'Darsun', exampleId: 'Pelajaran', tip: 'Ujung lidah menyentuh pangkal gigi seri atas dengan jelas.' },
+            { id: 'dzal', name: 'Dzal', base: 'ذ', sound: 'dza', translit: 'dz', exampleAr: 'ذَهَبٌ', exampleLat: 'Dzahabun', exampleId: 'Emas', tip: 'Ujung lidah menyentuh ujung gigi seri atas dengan suara bergetar lembut.' },
+            { id: 'ra', name: 'Ra', base: 'ر', sound: 'ra', translit: 'r', exampleAr: 'رُمَّانٌ', exampleLat: 'Rummānun', exampleId: 'Delima', tip: 'Getarkan ujung lidah secara halus di langit-langit depan.' },
+            { id: 'zai', name: 'Zai', base: 'ز', sound: 'za', translit: 'z', exampleAr: 'زَهْرَةٌ', exampleLat: 'Zahratun', exampleId: 'Bunga', tip: 'Alirkan udara melalui celah gigi atas dan bawah dengan dengung halus.' },
+            { id: 'sin', name: 'Sin', base: 'س', sound: 'sa', translit: 's', exampleAr: 'سَمَكٌ', exampleLat: 'Samakun', exampleId: 'Ikan', tip: 'Bunyi desis bersih dari ujung lidah dekat gigi seri bawah.' },
+            { id: 'syin', name: 'Syin', base: 'ش', sound: 'sya', translit: 'sy', exampleAr: 'شَمْسٌ', exampleLat: 'Syamsun', exampleId: 'Matahari', tip: 'Tengah lidah terangkat ke langit-langit, bunyi seperti "sy" menyebar.' },
+            { id: 'shad', name: 'Shad', base: 'ص', sound: 'ṣa', translit: 'ṣ', exampleAr: 'صَارُوخٌ', exampleLat: 'Ṣārūkhun', exampleId: 'Roket', tip: 'Bunyi "s" tebal dengan pangkal lidah terangkat ke langit-langit.' },
+            { id: 'dhad', name: 'Dhad', base: 'ض', sound: 'ḍa', translit: 'ḍ', exampleAr: 'ضَوْءٌ', exampleLat: 'Ḍaw’un', exampleId: 'Cahaya', tip: 'Tepi lidah menyentuh geraham atas dengan pelafalan tebal.' },
+            { id: 'tha', name: 'Tha', base: 'ط', sound: 'ṭa', translit: 'ṭ', exampleAr: 'طَائِرٌ', exampleLat: 'Ṭā’irun', exampleId: 'Burung', tip: 'Bunyi "t" tebal yang mantap dengan pangkal lidah terangkat.' },
+            { id: 'zha', name: 'Zha', base: 'ظ', sound: 'ẓa', translit: 'ẓ', exampleAr: 'ظَرْفٌ', exampleLat: 'Ẓarfun', exampleId: 'Amplop / Cerdik', tip: 'Ujung lidah menyentuh ujung gigi atas dengan bunyi tebal.' },
+            { id: 'ain', name: 'Ain', base: 'ع', sound: '‘a', translit: '‘', exampleAr: 'عَيْنٌ', exampleLat: '‘Aynun', exampleId: 'Mata', tip: 'Keluar dari tengah tenggorokan dengan tekanan halus tanpa tercekik.' },
+            { id: 'ghain', name: 'Ghain', base: 'غ', sound: 'gha', translit: 'gh', exampleAr: 'غَيْمٌ', exampleLat: 'Ghaymun', exampleId: 'Awan', tip: 'Bunyi seperti "gh" atau berkumur lembut di tenggorokan atas.' },
+            { id: 'fa', name: 'Fa', base: 'ف', sound: 'fa', translit: 'f', exampleAr: 'فِيلٌ', exampleLat: 'Fīlun', exampleId: 'Gajah', tip: 'Tempelkan bagian dalam bibir bawah ke ujung gigi seri atas.' },
+            { id: 'qaf', name: 'Qaf', base: 'ق', sound: 'qa', translit: 'q', exampleAr: 'قَلَمٌ', exampleLat: 'Qalamun', exampleId: 'Pensil / Pena', tip: 'Pangkal lidah menyentuh langit-langit lunak di bagian paling belakang.' },
+            { id: 'kaf', name: 'Kaf', base: 'ك', sound: 'ka', translit: 'k', exampleAr: 'كِتَابٌ', exampleLat: 'Kitābun', exampleId: 'Buku', tip: 'Pangkal lidah sedikit ke depan dari Qaf, bunyi "k" jelas.' },
+            { id: 'lam', name: 'Lam', base: 'ل', sound: 'la', translit: 'l', exampleAr: 'لَيْلٌ', exampleLat: 'Laylun', exampleId: 'Malam', tip: 'Ujung lidah menyentuh langit-langit depan seperti huruf "L".' },
+            { id: 'mim', name: 'Mim', base: 'م', sound: 'ma', translit: 'm', exampleAr: 'مَسْجِدٌ', exampleLat: 'Masjidun', exampleId: 'Masjid', tip: 'Kedua bibir tertutup rapat dengan suara senandung lembut.' },
+            { id: 'nun', name: 'Nun', base: 'ن', sound: 'na', translit: 'n', exampleAr: 'نَجْمٌ', exampleLat: 'Najmun', exampleId: 'Bintang', tip: 'Ujung lidah menyentuh langit-langit sedikit di bawah posisi Lam.' },
+            { id: 'wawu', name: 'Wawu', base: 'و', sound: 'wa', translit: 'w', exampleAr: 'وَرْدَةٌ', exampleLat: 'Wardatun', exampleId: 'Mawar', tip: 'Bibir membulat ke depan tanpa menempel rapat seperti "w".' },
+            { id: 'ha_besar', name: 'Ha’', base: 'ه', sound: 'ha', translit: 'h', exampleAr: 'هِلَالٌ', exampleLat: 'Hilālun', exampleId: 'Bulan Sabit', tip: 'Hembusan udara ringan dari pangkal tenggorokan.' },
+            { id: 'ya', name: 'Ya', base: 'ي', sound: 'ya', translit: 'y', exampleAr: 'يَدٌ', exampleLat: 'Yadun', exampleId: 'Tangan', tip: 'Tengah lidah terangkat ke arah langit-langit seperti huruf "y".' }
+        ];
+
+        const HARAKAT_OPTIONS = [
+            { id: 'none', label: 'Tanpa Harakat', mark: '', suffix: '' },
+            { id: 'fathah', label: 'Fathah (َ)', mark: '\u064E', suffix: 'a' },
+            { id: 'kasrah', label: 'Kasrah (ِ)', mark: '\u0650', suffix: 'i' },
+            { id: 'dhammah', label: 'Dhammah (ُ)', mark: '\u064F', suffix: 'u' },
+            { id: 'sukun', label: 'Sukun (ْ)', mark: '\u0652', suffix: '' }
+        ];
+
+        const AVATAR_CHOICES = ['⭐', '🌙', '🏮', '🐱', '🚀', '👑'];
+
+        /**
+         * Menggabungkan huruf dasar dengan harakat secara akurat.
+         * Khusus Alif + Kasrah menggunakan ٱ / إِ agar lebih natural dibaca.
+         */
+        function applyHarakatToLetter(letter, harakatId) {
+            const h = HARAKAT_OPTIONS.find(x => x.id === harakatId) || HARAKAT_OPTIONS[0];
+            if (harakatId === 'none') {
+                return {
+                    glyph: letter.base,
+                    reading: letter.sound,
+                    harakatName: h.label
+                };
+            }
+
+            let glyph = letter.base + h.mark;
+            if (letter.id === 'alif') {
+                if (harakatId === 'fathah') glyph = 'أَ';
+                if (harakatId === 'kasrah') glyph = 'إِ';
+                if (harakatId === 'dhammah') glyph = 'أُ';
+                if (harakatId === 'sukun') glyph = 'اْ';
+            }
+
+            let reading = '';
+            if (harakatId === 'sukun') {
+                reading = `${letter.translit}' (mati)`;
+            } else {
+                reading = `${letter.translit}${h.suffix}`;
+            }
+
+            return {
+                glyph,
+                reading,
+                harakatName: h.label
+            };
+        }
+
+        /**
+         * =====================================================================
+         * 2. AUDIO ENGINE (WEB SPEECH API + WEB AUDIO API FALLBACK & SFX)
+         * =====================================================================
+         */
+        class AudioManager {
+            constructor() {
+                this.muted = false;
+                this.audioCtx = null;
+                this.speaking = false;
+            }
+
+            ensureContext() {
+                if (!this.audioCtx) {
+                    const Ctx = window.AudioContext || window.webkitAudioContext;
+                    if (Ctx) this.audioCtx = new Ctx();
+                }
+                if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume().catch(() => {});
+                }
+            }
+
+            playSfx(type) {
+                if (this.muted) return;
+                this.ensureContext();
+                if (!this.audioCtx) return;
+
+                try {
+                    const now = this.audioCtx.currentTime;
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx.destination);
+
+                    if (type === 'click') {
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(520, now);
+                        osc.frequency.exponentialRampToValueAtTime(680, now + 0.06);
+                        gain.gain.setValueAtTime(0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                        osc.start(now);
+                        osc.stop(now + 0.07);
+                    } else if (type === 'correct') {
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(523.25, now);
+                        osc.frequency.setValueAtTime(659.25, now + 0.09);
+                        osc.frequency.setValueAtTime(783.99, now + 0.18);
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+                        osc.start(now);
+                        osc.stop(now + 0.35);
+                    } else if (type === 'wrong') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(240, now);
+                        osc.frequency.linearRampToValueAtTime(165, now + 0.22);
+                        gain.gain.setValueAtTime(0.09, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                        osc.start(now);
+                        osc.stop(now + 0.26);
+                    } else if (type === 'win') {
+                        const notes = [523.25, 659.25, 783.99, 1046.5];
+                        notes.forEach((freq, idx) => {
+                            const nOsc = this.audioCtx.createOscillator();
+                            const nGain = this.audioCtx.createGain();
+                            nOsc.type = 'triangle';
+                            nOsc.frequency.setValueAtTime(freq, now + idx * 0.11);
+                            nGain.gain.setValueAtTime(0.14, now + idx * 0.11);
+                            nGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.32);
+                            nOsc.connect(nGain);
+                            nGain.connect(this.audioCtx.destination);
+                            nOsc.start(now + idx * 0.11);
+                            nOsc.stop(now + idx * 0.11 + 0.34);
+                        });
+                    }
+                } catch (_) {}
+            }
+
+            /**
+             * Memutar pelafalan huruf menggunakan Web Speech API (ar-SA)
+             * dengan fallback nada sintetis Web Audio API bila suara Arab tidak tersedia.
+             */
+            speakLetter(letter, harakatId = 'none', onStateChange = null) {
+                if (this.muted) return;
+
+                const formatted = applyHarakatToLetter(letter, harakatId);
+                const textToSpeak = harakatId === 'none' ? letter.name : formatted.glyph;
+
+                const notify = (isSpeaking) => {
+                    this.speaking = isSpeaking;
+                    if (typeof onStateChange === 'function') onStateChange(isSpeaking);
+                };
+
+                const fallbackSynth = () => {
+                    this.ensureContext();
+                    if (!this.audioCtx) {
+                        notify(false);
+                        return;
+                    }
+                    try {
+                        const letterIdx = HIJAIYAH_LETTERS.findIndex(l => l.id === letter.id);
+                        const baseFreq = 260 + (letterIdx % 14) * 18;
+                        const harakatMult = harakatId === 'kasrah' ? 1.15 : harakatId === 'dhammah' ? 0.9 : 1.0;
+
+                        const now = this.audioCtx.currentTime;
+                        const osc = this.audioCtx.createOscillator();
+                        const gain = this.audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(baseFreq * harakatMult, now);
+                        osc.frequency.exponentialRampToValueAtTime(baseFreq * harakatMult * 1.12, now + 0.25);
+
+                        gain.gain.setValueAtTime(0.001, now);
+                        gain.gain.linearRampToValueAtTime(0.16, now + 0.04);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+                        osc.connect(gain);
+                        gain.connect(this.audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.44);
+
+                        notify(true);
+                        setTimeout(() => notify(false), 450);
+                    } catch (_) {
+                        notify(false);
+                    }
+                };
+
+                if ('speechSynthesis' in window) {
+                    try {
+                        window.speechSynthesis.cancel();
+                        const utter = new SpeechSynthesisUtterance(textToSpeak);
+                        utter.lang = 'ar-SA';
+                        utter.rate = 0.85;
+                        utter.pitch = 1.0;
+
+                        const voices = window.speechSynthesis.getVoices();
+                        const arabicVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ar'));
+
+                        if (!arabicVoice && voices.length > 0) {
+                            fallbackSynth();
+                            return;
+                        }
+                        if (arabicVoice) {
+                            utter.voice = arabicVoice;
+                        }
+
+                        let started = false;
+                        const guardTimeout = setTimeout(() => {
+                            if (!started) {
+                                window.speechSynthesis.cancel();
+                                fallbackSynth();
+                            }
+                        }, 900);
+
+                        utter.onstart = () => {
+                            started = true;
+                            clearTimeout(guardTimeout);
+                            notify(true);
+                        };
+                        utter.onend = () => {
+                            clearTimeout(guardTimeout);
+                            notify(false);
+                        };
+                        utter.onerror = () => {
+                            clearTimeout(guardTimeout);
+                            fallbackSynth();
+                        };
+
+                        window.speechSynthesis.speak(utter);
+                    } catch (_) {
+                        fallbackSynth();
+                    }
+                } else {
+                    fallbackSynth();
+                }
+            }
+        }
+
+        const audioMgr = new AudioManager();
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
+
+        /**
+         * =====================================================================
+         * 3. PENYIMPANAN PROFIL PEMAIN & PROGRES (localStorage)
+         * =====================================================================
+         */
+        const STORAGE_KEY = 'jelajah_hijaiyah_profiles_v1';
+
+        function createDefaultProfile(name, avatar) {
+            const mastery = {};
+            HIJAIYAH_LETTERS.forEach(l => {
+                mastery[l.id] = { stars: 0, correct: 0, practiced: 0 };
+            });
+            return {
+                id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                name: name.trim(),
+                avatar: avatar || '⭐',
+                xp: 0,
+                bestCombo: 0,
+                quizRoundsPlayed: 0,
+                matchingWins: 0,
+                mastery,
+                updatedAt: Date.now()
+            };
+        }
+
+        let storeState = {
+            activeId: null,
+            profiles: {}
+        };
+
+        function loadStore() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed.profiles === 'object') {
+                        storeState = {
+                            activeId: parsed.activeId || null,
+                            profiles: parsed.profiles
+                        };
+                        // Pastikan semua 28 huruf ada di tiap profil
+                        Object.values(storeState.profiles).forEach(prof => {
+                            if (!prof.mastery) prof.mastery = {};
+                            HIJAIYAH_LETTERS.forEach(l => {
+                                if (!prof.mastery[l.id]) {
+                                    prof.mastery[l.id] = { stars: 0, correct: 0, practiced: 0 };
+                                }
+                            });
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn('Gagal memuat data profil:', err);
+            }
+        }
+
+        function saveStore() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(storeState));
+            } catch (err) {
+                console.warn('Gagal menyimpan data profil:', err);
+            }
+        }
+
+        function getActivePlayer() {
+            if (!storeState.activeId || !storeState.profiles[storeState.activeId]) {
+                return null;
+            }
+            return storeState.profiles[storeState.activeId];
+        }
+
+        function getTotalStars(player) {
+            if (!player || !player.mastery) return 0;
+            return Object.values(player.mastery).reduce((acc, m) => acc + (m.stars || 0), 0);
+        }
+
+        function getMasteredCount(player) {
+            if (!player || !player.mastery) return 0;
+            return Object.values(player.mastery).filter(m => (m.stars || 0) >= 2).length;
+        }
+
+        function getPlayerLevel(xp) {
+            return Math.floor((xp || 0) / 100) + 1;
+        }
+
+        function awardLetterProgress(letterId, { addXp = 0, addStar = 0, isCorrect = false, isPractice = false }) {
+            const player = getActivePlayer();
+            if (!player) return;
+
+            if (!player.mastery[letterId]) {
+                player.mastery[letterId] = { stars: 0, correct: 0, practiced: 0 };
+            }
+            const m = player.mastery[letterId];
+            if (isCorrect) m.correct = (m.correct || 0) + 1;
+            if (isPractice) m.practiced = (m.practiced || 0) + 1;
+
+            if (addStar > 0) {
+                m.stars = Math.min(3, (m.stars || 0) + addStar);
+            } else if (isCorrect && (m.correct % 2 === 0 || m.stars === 0)) {
+                m.stars = Math.min(3, (m.stars || 0) + 1);
+            }
+
+            player.xp = (player.xp || 0) + addXp;
+            player.updatedAt = Date.now();
+            saveStore();
+            refreshHeaderAndHome();
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            const palette = type === 'success'
+                ? 'bg-emerald-950/95 border-emerald-400/50 text-emerald-200'
+                : type === 'warn'
+                ? 'bg-amber-950/95 border-amber-400/50 text-amber-200'
+                : 'bg-night-800/95 border-slate-600/70 text-slate-100';
+
+            el.className = `px-4 py-2.5 rounded-2xl border shadow-xl text-xs font-semibold pop-in ${palette}`;
+            el.textContent = message;
+            container.appendChild(el);
+
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-6px)';
+                el.style.transition = 'all 0.25s ease';
+                setTimeout(() => el.remove(), 260);
+            }, 2400);
+        }
+
+        function launchConfetti() {
+            const colors = ['#fbbf24', '#10b981', '#34d399', '#38bdf8', '#f472b6'];
+            for (let i = 0; i < 36; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.width = (7 + Math.random() * 7) + 'px';
+                piece.style.height = (10 + Math.random() * 10) + 'px';
+                piece.style.backgroundColor = colors[i % colors.length];
+                piece.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+                piece.style.animationDelay = (Math.random() * 0.35) + 's';
+                document.body.appendChild(piece);
+                setTimeout(() => piece.remove(), 3400);
+            }
+        }
+
+        /**
+         * =====================================================================
+         * 4. MODAL PROFIL PEMAIN (SAMBUTAN, GANTI NAMA, KELOLA profil)
+         * =====================================================================
+         */
+        let selectedModalAvatar = AVATAR_CHOICES[0];
+
+        function renderAvatarPicker() {
+            const picker = document.getElementById('avatarPicker');
+            picker.innerHTML = '';
+            AVATAR_CHOICES.forEach(av => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const active = av === selectedModalAvatar;
+                btn.className = `h-11 rounded-2xl text-xl flex items-center justify-center border transition active:scale-95 ${
+                    active
+                        ? 'bg-emerald-500/20 border-emerald-400 ring-2 ring-emerald-400/40 scale-105'
+                        : 'bg-night-900 border-slate-700/80 hover:border-slate-500'
+                }`;
+                btn.textContent = av;
+                btn.onclick = () => {
+                    audioMgr.playSfx('click');
+                    selectedModalAvatar = av;
+                    renderAvatarPicker();
+                };
+                picker.appendChild(btn);
+            });
+        }
+
+        function renderSavedProfilesList() {
+            const section = document.getElementById('savedProfilesSection');
+            const listEl = document.getElementById('savedProfilesList');
+            const countEl = document.getElementById('savedProfilesCount');
+            const profiles = Object.values(storeState.profiles).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+            if (profiles.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            countEl.textContent = `${profiles.length} profil`;
+            listEl.innerHTML = '';
+
+            profiles.forEach(p => {
+                const isCurrent = p.id === storeState.activeId;
+                const stars = getTotalStars(p);
+                const lvl = getPlayerLevel(p.xp);
+
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between gap-2 p-2.5 rounded-2xl border ${
+                    isCurrent ? 'bg-emerald-500/10 border-emerald-400/40' : 'bg-night-900/80 border-slate-800'
+                }`;
+
+                const infoBtn = document.createElement('button');
+                infoBtn.type = 'button';
+                infoBtn.className = 'flex items-center gap-2.5 text-left flex-1 min-w-0';
+                infoBtn.innerHTML = `
+                    <span class="text-xl shrink-0">${p.avatar}</span>
+                    <div class="truncate">
+                        <div class="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5">
+                            <span>${escapeHtml(p.name)}</span>
+                            ${isCurrent ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Aktif</span>' : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400">Lv.${lvl} • ⭐ ${stars} • ✨ ${p.xp || 0} XP</div>
+                    </div>
+                `;
+                infoBtn.onclick = () => {
+                    audioMgr.playSfx('click');
+                    storeState.activeId = p.id;
+                    saveStore();
+                    closePlayerModal();
+                    refreshHeaderAndHome();
+                    renderMasteryGrid();
+                    showToast(`Beralih ke profil ${p.name}!`, 'success');
+                };
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/25 shrink-0';
+                delBtn.textContent = 'Hapus';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    audioMgr.playSfx('click');
+                    delete storeState.profiles[p.id];
+                    if (storeState.activeId === p.id) {
+                        const remaining = Object.keys(storeState.profiles);
+                        storeState.activeId = remaining.length > 0 ? remaining[0] : null;
+                    }
+                    saveStore();
+                    renderSavedProfilesList();
+                    refreshHeaderAndHome();
+                    renderMasteryGrid();
+                    showToast(`Profil ${p.name} dihapus.`);
+                };
+
+                row.appendChild(infoBtn);
+                row.appendChild(delBtn);
+                listEl.appendChild(row);
+            });
+        }
+
+        function openPlayerModal(forceRequired = false) {
+            const modal = document.getElementById('playerModal');
+            const closeBtn = document.getElementById('closePlayerModalBtn');
+            const active = getActivePlayer();
+
+            selectedModalAvatar = active ? active.avatar : AVATAR_CHOICES[0];
+            document.getElementById('playerNameInput').value = '';
+            document.getElementById('playerModalTitle').textContent = active
+                ? 'Ganti atau Tambah Pemain'
+                : 'Selamat Datang! Siapa Namamu?';
+
+            closeBtn.classList.toggle('hidden', forceRequired || !active);
+            renderAvatarPicker();
+            renderSavedProfilesList();
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('playerNameInput').focus(), 60);
+        }
+
+        function closePlayerModal() {
+            if (!getActivePlayer()) return;
+            document.getElementById('playerModal').classList.add('hidden');
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        document.getElementById('playerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const inputEl = document.getElementById('playerNameInput');
+            const nameVal = inputEl.value.trim();
+            if (!nameVal) {
+                showToast('Masukkan nama pemain terlebih dahulu ya!', 'warn');
+                return;
+            }
+
+            audioMgr.playSfx('win');
+
+            // Cek jika nama sudah ada (case-insensitive), perbarui avatar & aktifkan
+            const existing = Object.values(storeState.profiles).find(
+                p => p.name.toLowerCase() === nameVal.toLowerCase()
+            );
+
+            if (existing) {
+                existing.avatar = selectedModalAvatar;
+                existing.updatedAt = Date.now();
+                storeState.activeId = existing.id;
+                showToast(`Halo kembali, ${existing.name}!`, 'success');
+            } else {
+                const newProf = createDefaultProfile(nameVal, selectedModalAvatar);
+                storeState.profiles[newProf.id] = newProf;
+                storeState.activeId = newProf.id;
+                showToast(`Profil ${newProf.name} berhasil disimpan!`, 'success');
+            }
+
+            saveStore();
+            closePlayerModal();
+            refreshHeaderAndHome();
+            renderMasteryGrid();
+        });
+
+        document.getElementById('switchPlayerBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            openPlayerModal(false);
+        });
+
+        document.getElementById('closePlayerModalBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            closePlayerModal();
+        });
+
+        /**
+         * =====================================================================
+         * 5. HEADER, BERANDA & PETA KOLEKSI 28 HURUF
+         * =====================================================================
+         */
+        function refreshHeaderAndHome() {
+            const player = getActivePlayer();
+            const name = player ? player.name : 'Petualang';
+            const avatar = player ? player.avatar : '⭐';
+            const xp = player ? (player.xp || 0) : 0;
+            const stars = getTotalStars(player);
+            const mastered = getMasteredCount(player);
+            const level = getPlayerLevel(xp);
+            const bestCombo = player ? (player.bestCombo || 0) : 0;
+
+            document.getElementById('headerAvatar').textContent = avatar;
+            document.getElementById('headerPlayerName').textContent = name;
+            document.getElementById('headerPlayerLevel').textContent = `Lv.${level}`;
+            document.getElementById('headerStars').textContent = stars;
+            document.getElementById('headerXp').textContent = xp;
+            document.getElementById('headerMastery').textContent = `${mastered}/28 Hafal`;
+
+            document.getElementById('heroGreeting').textContent = `Assalamu'alaikum, ${name}! (Level ${level})`;
+            document.getElementById('homeStatMastered').textContent = `${mastered}/28`;
+            document.getElementById('homeStatStars').textContent = stars;
+            document.getElementById('homeStatStreak').textContent = bestCombo;
+
+            const pct = Math.round((mastered / HIJAIYAH_LETTERS.length) * 100);
+            document.getElementById('homeMasteryPercent').textContent = `${pct}%`;
+            document.getElementById('homeMasteryBar').style.width = `${pct}%`;
+        }
+
+        function renderMasteryGrid() {
+            const grid = document.getElementById('masteryGrid');
+            const player = getActivePlayer();
+            grid.innerHTML = '';
+
+            HIJAIYAH_LETTERS.forEach((letter, idx) => {
+                const m = player && player.mastery ? (player.mastery[letter.id] || { stars: 0 }) : { stars: 0 };
+                const st = m.stars || 0;
+
+                let cardStyle = 'bg-night-900/90 border-slate-800 hover:border-slate-600';
+                if (st >= 3) {
+                    cardStyle = 'bg-emerald-500/15 border-emerald-400/50 hover:border-emerald-300';
+                } else if (st >= 1) {
+                    cardStyle = 'bg-amber-400/10 border-amber-400/35 hover:border-amber-300';
+                }
+
+                const starDisplay = '★'.repeat(st) + '☆'.repeat(3 - st);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `rounded-2xl p-2.5 border flex flex-col items-center justify-between text-center transition active:scale-95 ${cardStyle}`;
+                btn.title = `${letter.name} (${letter.sound}) — ${st}/3 Bintang. Klik untuk latihan!`;
+                btn.innerHTML = `
+                    <span class="text-[10px] text-slate-400 font-semibold">${idx + 1}</span>
+                    <span class="arabic-letter text-3xl font-bold text-white my-0.5">${letter.base}</span>
+                    <span class="text-[11px] font-bold text-slate-200 truncate w-full">${letter.name}</span>
+                    <span class="text-[10px] tracking-tighter mt-0.5 ${st > 0 ? 'text-amber-300' : 'text-slate-600'}">${starDisplay}</span>
+                `;
+                btn.onclick = () => {
+                    audioMgr.playSfx('click');
+                    currentFlashcardIndex = idx;
+                    switchView('flashcard');
+                    renderFlashcard();
+                    audioMgr.speakLetter(letter, currentHarakatId);
+                };
+
+                grid.appendChild(btn);
+            });
+        }
+
+        /**
+         * =====================================================================
+         * 6. NAVIGASI ANTAR MODE / VIEW
+         * =====================================================================
+         */
+        let activeViewName = 'home';
+
+        function switchView(viewName) {
+            activeViewName = viewName;
+
+            document.querySelectorAll('.app-view').forEach(sec => {
+                sec.classList.add('hidden');
+            });
+            const targetSec = document.getElementById(`view-${viewName}`);
+            if (targetSec) targetSec.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                const isActive = tab.dataset.view === viewName;
+                tab.className = `nav-tab flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-display font-bold text-xs sm:text-sm transition active:scale-[0.98] ${
+                    isActive
+                        ? 'bg-gradient-to-r from-emerald-500/25 to-amber-400/20 text-white border border-emerald-400/50 shadow-md'
+                        : 'glass-card text-slate-300 hover:text-white hover:border-slate-600'
+                }`;
+            });
+
+            if (viewName === 'home') {
+                refreshHeaderAndHome();
+                renderMasteryGrid();
+            } else if (viewName === 'flashcard') {
+                renderFlashcard();
+            } else if (viewName === 'quiz') {
+                startNewQuizRound();
+            } else if (viewName === 'matching') {
+                initMatchingGame();
+            }
+        }
+
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                audioMgr.playSfx('click');
+                switchView(tab.dataset.view);
+            });
+        });
+
+        document.getElementById('brandHomeBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            switchView('home');
+        });
+
+        /**
+         * =====================================================================
+         * 7. MODE 1: KENAL & DENGAR HURUF (FLASHCARD INTERAKTIF)
+         * =====================================================================
+         */
+        let currentFlashcardIndex = 0;
+        let currentHarakatId = 'none';
+
+        function renderHarakatButtons() {
+            const container = document.getElementById('harakatSelector');
+            container.innerHTML = '';
+
+            HARAKAT_OPTIONS.forEach(h => {
+                const active = h.id === currentHarakatId;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${
+                    active
+                        ? 'bg-emerald-500 text-night-950 border-emerald-300 shadow'
+                        : 'bg-night-900 text-slate-300 border-slate-700 hover:border-slate-500'
+                }`;
+                btn.textContent = h.label;
+                btn.onclick = () => {
+                    audioMgr.playSfx('click');
+                    currentHarakatId = h.id;
+                    renderFlashcard();
+                    audioMgr.speakLetter(HIJAIYAH_LETTERS[currentFlashcardIndex], currentHarakatId);
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderFlashcard() {
+            renderHarakatButtons();
+            const letter = HIJAIYAH_LETTERS[currentFlashcardIndex];
+            const formatted = applyHarakatToLetter(letter, currentHarakatId);
+            const player = getActivePlayer();
+            const m = player && player.mastery ? (player.mastery[letter.id] || { stars: 0 }) : { stars: 0 };
+            const st = m.stars || 0;
+
+            document.getElementById('fcIndexBadge').textContent = `${currentFlashcardIndex + 1} / ${HIJAIYAH_LETTERS.length}`;
+            document.getElementById('fcHarakatLabel').textContent = formatted.harakatName;
+            document.getElementById('fcMasteryStars').textContent = `${'★'.repeat(st)}${'☆'.repeat(3 - st)} (${st}/3 Bintang)`;
+
+            document.getElementById('fcArabicDisplay').textContent = formatted.glyph;
+            document.getElementById('fcName').textContent = letter.name;
+            document.getElementById('fcSoundReading').textContent = formatted.reading;
+            document.getElementById('fcTranslitNote').innerHTML = `Huruf dasar: <span class="text-slate-200 font-semibold">${letter.sound}</span> • Simbol Latin: <span class="text-emerald-300 font-semibold">${letter.translit}</span>`;
+
+            document.getElementById('fcExampleArabic').textContent = letter.exampleAr;
+            document.getElementById('fcExampleLatin').textContent = letter.exampleLat;
+            document.getElementById('fcExampleMeaning').innerHTML = `Artinya: <span class="font-semibold text-white">${letter.exampleId}</span>`;
+            document.getElementById('fcTipText').textContent = letter.tip;
+
+            // Strip navigasi cepat 28 huruf
+            const strip = document.getElementById('fcQuickStrip');
+            strip.innerHTML = '';
+            HIJAIYAH_LETTERS.forEach((item, idx) => {
+                const isCur = idx === currentFlashcardIndex;
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = `shrink-0 w-10 h-11 rounded-xl flex flex-col items-center justify-center border transition ${
+                    isCur
+                        ? 'bg-amber-400/20 border-amber-300 text-amber-200 scale-105'
+                        : 'bg-night-900/90 border-slate-800 text-slate-300 hover:border-slate-600'
+                }`;
+                b.innerHTML = `<span class="arabic-letter text-lg leading-none">${item.base}</span><span class="text-[9px] text-slate-400">${idx + 1}</span>`;
+                b.onclick = () => {
+                    audioMgr.playSfx('click');
+                    currentFlashcardIndex = idx;
+                    renderFlashcard();
+                };
+                strip.appendChild(b);
+            });
+        }
+
+        document.getElementById('fcPlayAudioBtn').addEventListener('click', () => {
+            const letter = HIJAIYAH_LETTERS[currentFlashcardIndex];
+            const displayEl = document.getElementById('fcArabicDisplay');
+            audioMgr.speakLetter(letter, currentHarakatId, (isSpeaking) => {
+                displayEl.classList.toggle('speaking-glow', isSpeaking);
+            });
+        });
+
+        document.getElementById('fcPracticeStarBtn').addEventListener('click', () => {
+            const letter = HIJAIYAH_LETTERS[currentFlashcardIndex];
+            audioMgr.playSfx('correct');
+            awardLetterProgress(letter.id, {
+                addXp: 15,
+                addStar: 1,
+                isPractice: true
+            });
+            renderFlashcard();
+            showToast(`Latihan huruf ${letter.name} tercatat! +15 XP`, 'success');
+        });
+
+        document.getElementById('fcPrevBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            currentFlashcardIndex = (currentFlashcardIndex - 1 + HIJAIYAH_LETTERS.length) % HIJAIYAH_LETTERS.length;
+            renderFlashcard();
+        });
+
+        document.getElementById('fcNextBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            currentFlashcardIndex = (currentFlashcardIndex + 1) % HIJAIYAH_LETTERS.length;
+            renderFlashcard();
+        });
+
+        /**
+         * =====================================================================
+         * 8. MODE 2: KUIS TEBAK HURUF & SUARA (10 SOAL PER RONDE)
+         * =====================================================================
+         */
+        const QUIZ_TOTAL_QUESTIONS = 10;
+        let quizQuestions = [];
+        let quizIndex = 0;
+        let quizScore = 0;
+        let quizCombo = 0;
+        let quizMaxCombo = 0;
+        let quizCorrectCount = 0;
+        let quizXpEarned = 0;
+        let quizStarsEarned = 0;
+        let quizAnswered = false;
+        let quizTimerInterval = null;
+        let quizTimeLeft = 15;
+
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function startNewQuizRound() {
+            clearInterval(quizTimerInterval);
+
+            // Prioritaskan huruf yang bintangnya masih sedikit agar latihan merata
+            const player = getActivePlayer();
+            const sortedByNeed = [...HIJAIYAH_LETTERS].sort((a, b) => {
+                const sa = player && player.mastery && player.mastery[a.id] ? player.mastery[a.id].stars : 0;
+                const sb = player && player.mastery && player.mastery[b.id] ? player.mastery[b.id].stars : 0;
+                return sa - sb + (Math.random() - 0.5) * 1.4;
+            });
+
+            const pool = sortedByNeed.slice(0, QUIZ_TOTAL_QUESTIONS);
+            quizQuestions = shuffleArray(pool).map((target, i) => {
+                const challengeType = i % 2 === 0 ? 'audio' : 'clue';
+                const distractors = shuffleArray(
+                    HIJAIYAH_LETTERS.filter(item => item.id !== target.id)
+                ).slice(0, 3);
+                const options = shuffleArray([target, ...distractors]);
+                return { target, challengeType, options };
+            });
+
+            quizIndex = 0;
+            quizScore = 0;
+            quizCombo = 0;
+            quizMaxCombo = 0;
+            quizCorrectCount = 0;
+            quizXpEarned = 0;
+            quizStarsEarned = 0;
+
+            document.getElementById('quizSummaryBox').classList.add('hidden');
+            document.getElementById('quizActiveBox').classList.remove('hidden');
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            clearInterval(quizTimerInterval);
+            quizAnswered = false;
+
+            const q = quizQuestions[quizIndex];
+            document.getElementById('quizQuestionCounter').textContent = `Soal ${quizIndex + 1} / ${QUIZ_TOTAL_QUESTIONS}`;
+            document.getElementById('quizComboBadge').textContent = `🔥 Kombo: ${quizCombo}`;
+            document.getElementById('quizScoreText').textContent = quizScore;
+            document.getElementById('quizProgressBar').style.width = `${((quizIndex + 1) / QUIZ_TOTAL_QUESTIONS) * 100}%`;
+            document.getElementById('quizFeedbackBar').classList.add('hidden');
+
+            const typeLabel = document.getElementById('quizPromptTypeLabel');
+            const titleEl = document.getElementById('quizPromptTitle');
+            const subEl = document.getElementById('quizPromptSubtitle');
+            const audioWrap = document.getElementById('quizAudioTriggerWrap');
+
+            if (q.challengeType === 'audio') {
+                typeLabel.textContent = '🔊 Tantangan Suara';
+                titleEl.textContent = 'Dengarkan pelafalan huruf berikut, lalu pilih huruf hijaiyahnya!';
+                subEl.textContent = 'Perhatikan bunyi huruf yang diputar.';
+                audioWrap.classList.remove('hidden');
+                audioMgr.speakLetter(q.target, 'none');
+            } else {
+                typeLabel.textContent = '✨ Tantangan Nama & Petunjuk';
+                titleEl.textContent = `Manakah bentuk huruf "${q.target.name}" (${q.target.sound})?`;
+                subEl.textContent = `Contoh kata: ${q.target.exampleLat} (${q.target.exampleId})`;
+                audioWrap.classList.remove('hidden');
+            }
+
+            const optGrid = document.getElementById('quizOptionsGrid');
+            optGrid.innerHTML = '';
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.letterId = opt.id;
+                btn.className = 'quiz-opt-btn glass-card hover:border-amber-300/70 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center gap-1.5 transition active:scale-95';
+                btn.innerHTML = `
+                    <span class="arabic-letter text-5xl sm:text-6xl font-bold text-white">${opt.base}</span>
+                    <span class="text-xs font-semibold text-slate-400">Pilih Huruf</span>
+                `;
+                btn.onclick = () => handleQuizAnswer(opt.id);
+                optGrid.appendChild(btn);
+            });
+
+            // Timer Santai
+            const timerEnabled = document.getElementById('quizTimerToggle').checked;
+            const timerPill = document.getElementById('quizTimerPill');
+            if (timerEnabled) {
+                quizTimeLeft = 15;
+                timerPill.classList.remove('hidden');
+                timerPill.textContent = `${quizTimeLeft}s`;
+                quizTimerInterval = setInterval(() => {
+                    if (quizAnswered) return;
+                    quizTimeLeft--;
+                    timerPill.textContent = `${quizTimeLeft}s`;
+                    if (quizTimeLeft <= 0) {
+                        clearInterval(quizTimerInterval);
+                        handleQuizAnswer(null, true);
+                    }
+                }, 1000);
+            } else {
+                timerPill.classList.add('hidden');
+            }
+        }
+
+        function handleQuizAnswer(selectedId, timedOut = false) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            clearInterval(quizTimerInterval);
+
+            const q = quizQuestions[quizIndex];
+            const isCorrect = selectedId === q.target.id;
+
+            // Warnai tombol pilihan
+            document.querySelectorAll('.quiz-opt-btn').forEach(btn => {
+                btn.disabled = true;
+                const id = btn.dataset.letterId;
+                if (id === q.target.id) {
+                    btn.className = 'quiz-opt-btn rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center gap-1.5 bg-emerald-500/20 border-2 border-emerald-400 text-white';
+                } else if (id === selectedId && !isCorrect) {
+                    btn.className = 'quiz-opt-btn rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center gap-1.5 bg-rose-500/20 border-2 border-rose-400 text-white';
+                } else {
+                    btn.classList.add('opacity-50');
+                }
+            });
+
+            const fbBar = document.getElementById('quizFeedbackBar');
+            const fbTitle = document.getElementById('quizFeedbackTitle');
+            const fbDetail = document.getElementById('quizFeedbackDetail');
+            const nextBtn = document.getElementById('quizNextQuestionBtn');
+
+            fbBar.classList.remove('hidden');
+
+            if (isCorrect) {
+                audioMgr.playSfx('correct');
+                quizCorrectCount++;
+                quizCombo++;
+                if (quizCombo > quizMaxCombo) quizMaxCombo = quizCombo;
+
+                const gainedScore = 100 + Math.min(50, (quizCombo - 1) * 10);
+                const gainedXp = 20 + Math.min(20, (quizCombo - 1) * 5);
+                quizScore += gainedScore;
+                quizXpEarned += gainedXp;
+
+                const player = getActivePlayer();
+                const prevStars = player && player.mastery && player.mastery[q.target.id] ? player.mastery[q.target.id].stars : 0;
+                awardLetterProgress(q.target.id, {
+                    addXp: gainedXp,
+                    isCorrect: true
+                });
+                const updatedPlayer = getActivePlayer();
+                const newStars = updatedPlayer && updatedPlayer.mastery && updatedPlayer.mastery[q.target.id] ? updatedPlayer.mastery[q.target.id].stars : prevStars;
+                if (newStars > prevStars) quizStarsEarned += (newStars - prevStars);
+
+                if (updatedPlayer && quizMaxCombo > (updatedPlayer.bestCombo || 0)) {
+                    updatedPlayer.bestCombo = quizMaxCombo;
+                    saveStore();
+                    refreshHeaderAndHome();
+                }
+
+                fbBar.className = 'rounded-2xl p-4 border border-emerald-400/40 bg-emerald-950/55 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pop-in';
+                fbTitle.className = 'font-display font-bold text-sm sm:text-base text-emerald-300';
+                fbTitle.textContent = `Mantap! Jawaban tepat (+${gainedScore} poin, +${gainedXp} XP)`;
+                fbDetail.textContent = `Huruf ${q.target.name} (${q.target.base}) — contoh: ${q.target.exampleLat} (${q.target.exampleId}).`;
+            } else {
+                audioMgr.playSfx('wrong');
+                quizCombo = 0;
+                fbBar.className = 'rounded-2xl p-4 border border-rose-400/40 bg-rose-950/55 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pop-in';
+                fbTitle.className = 'font-display font-bold text-sm sm:text-base text-rose-300';
+                fbTitle.textContent = timedOut ? 'Waktu habis! Yuk lanjut ke soal berikutnya.' : 'Belum tepat, jangan menyerah!';
+                fbDetail.textContent = `Huruf yang benar adalah ${q.target.name} (${q.target.base}) dengan bunyi "${q.target.sound}".`;
+            }
+
+            document.getElementById('quizComboBadge').textContent = `🔥 Kombo: ${quizCombo}`;
+            document.getElementById('quizScoreText').textContent = quizScore;
+            nextBtn.textContent = quizIndex === QUIZ_TOTAL_QUESTIONS - 1 ? 'Lihat Hasil Ronde 🏆' : 'Soal Berikutnya →';
+        }
+
+        document.getElementById('quizReplayAudioBtn').addEventListener('click', () => {
+            const q = quizQuestions[quizIndex];
+            if (q) audioMgr.speakLetter(q.target, 'none');
+        });
+
+        document.getElementById('quizNextQuestionBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            if (quizIndex < QUIZ_TOTAL_QUESTIONS - 1) {
+                quizIndex++;
+                renderQuizQuestion();
+            } else {
+                finishQuizRound();
+            }
+        });
+
+        function finishQuizRound() {
+            clearInterval(quizTimerInterval);
+            audioMgr.playSfx('win');
+            if (quizCorrectCount >= 7) launchConfetti();
+
+            const player = getActivePlayer();
+            if (player) {
+                player.quizRoundsPlayed = (player.quizRoundsPlayed || 0) + 1;
+                saveStore();
+            }
+
+            document.getElementById('quizActiveBox').classList.add('hidden');
+            document.getElementById('quizSummaryBox').classList.remove('hidden');
+
+            document.getElementById('sumCorrect').textContent = `${quizCorrectCount}/${QUIZ_TOTAL_QUESTIONS}`;
+            document.getElementById('sumScore').textContent = quizScore;
+            document.getElementById('sumXpEarned').textContent = `+${quizXpEarned} XP`;
+            document.getElementById('sumStarsEarned').textContent = `+${quizStarsEarned} ⭐`;
+
+            const msg = quizCorrectCount >= 8
+                ? 'Luar biasa! Penguasaan huruf hijaiyahmu sangat kuat!'
+                : quizCorrectCount >= 5
+                ? 'Bagus sekali! Terus berlatih agar makin lancar.'
+                : 'Langkah awal yang baik! Coba pelajari lagi di Kenal & Dengar.';
+            document.getElementById('quizSummaryMessage').textContent = msg;
+        }
+
+        document.getElementById('quizPlayAgainBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            startNewQuizRound();
+        });
+
+        /**
+         * =====================================================================
+         * 9. MODE 3: COCOKKAN KARTU (MEMORY / MATCHING GAME)
+         * =====================================================================
+         */
+        let matchCards = [];
+        let flippedIndices = [];
+        let matchedCount = 0;
+        let matchMoves = 0;
+        let matchScore = 0;
+        let matchSeconds = 0;
+        let matchTimerId = null;
+        let matchLockBoard = false;
+
+        function formatClock(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function initMatchingGame() {
+            clearInterval(matchTimerId);
+            const pairCount = parseInt(document.getElementById('matchingPairsSelect').value, 10) || 6;
+            const chosenLetters = shuffleArray(HIJAIYAH_LETTERS).slice(0, pairCount);
+
+            // Setiap huruf punya kartu Bentuk Hijaiyah & kartu Nama/Bunyi
+            const deck = [];
+            chosenLetters.forEach(item => {
+                deck.push({
+                    pairId: item.id,
+                    kind: 'glyph',
+                    mainText: item.base,
+                    subText: 'Hijaiyah',
+                    isArabic: true,
+                    letterObj: item
+                });
+                deck.push({
+                    pairId: item.id,
+                    kind: 'label',
+                    mainText: item.name,
+                    subText: `Bunyi: ${item.sound}`,
+                    isArabic: false,
+                    letterObj: item
+                });
+            });
+
+            matchCards = shuffleArray(deck).map((card, idx) => ({
+                ...card,
+                idx,
+                flipped: false,
+                matched: false
+            }));
+
+            flippedIndices = [];
+            matchedCount = 0;
+            matchMoves = 0;
+            matchScore = 0;
+            matchSeconds = 0;
+            matchLockBoard = false;
+
+            document.getElementById('matchingWinBanner').classList.add('hidden');
+            updateMatchingStats(pairCount);
+            renderMatchingBoard(pairCount);
+
+            matchTimerId = setInterval(() => {
+                matchSeconds++;
+                document.getElementById('matchTimeText').textContent = formatClock(matchSeconds);
+            }, 1000);
+        }
+
+        function updateMatchingStats(pairCount) {
+            document.getElementById('matchMovesText').textContent = matchMoves;
+            document.getElementById('matchFoundText').textContent = `${matchedCount} / ${pairCount}`;
+            document.getElementById('matchTimeText').textContent = formatClock(matchSeconds);
+            document.getElementById('matchScoreText').textContent = matchScore;
+        }
+
+        function renderMatchingBoard(pairCount) {
+            const board = document.getElementById('matchingBoard');
+            board.className = pairCount === 8
+                ? 'grid grid-cols-4 gap-2.5 sm:gap-3.5'
+                : 'grid grid-cols-3 sm:grid-cols-4 gap-2.5 sm:gap-4';
+            board.innerHTML = '';
+
+            matchCards.forEach((card, idx) => {
+                const wrap = document.createElement('button');
+                wrap.type = 'button';
+                wrap.id = `mcard-${idx}`;
+                wrap.className = 'memory-card h-28 sm:h-36 w-full text-center focus:outline-none';
+
+                wrap.innerHTML = `
+                    <div class="memory-inner rounded-2xl">
+                        <div class="memory-front glass-card hover:border-amber-300/60 rounded-2xl flex flex-col items-center justify-center gap-1 border border-slate-700/80">
+                            <span class="text-2xl sm:text-3xl">🌙</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Buka</span>
+                        </div>
+                        <div class="memory-back rounded-2xl p-2 flex flex-col items-center justify-center border ${
+                            card.kind === 'glyph'
+                                ? 'bg-gradient-to-br from-night-800 to-night-900 border-amber-400/40'
+                                : 'bg-gradient-to-br from-emerald-950/90 to-night-900 border-emerald-400/40'
+                        }">
+                            <span class="${card.isArabic ? 'arabic-letter text-4xl sm:text-5xl font-bold text-amber-200' : 'font-display text-base sm:text-xl font-extrabold text-emerald-200'} leading-tight">
+                                ${escapeHtml(card.mainText)}
+                            </span>
+                            <span class="text-[10px] sm:text-xs text-slate-300 mt-1">${escapeHtml(card.subText)}</span>
+                        </div>
+                    </div>
+                `;
+
+                wrap.onclick = () => handleFlipMemoryCard(idx, pairCount);
+                board.appendChild(wrap);
+            });
+        }
+
+        function handleFlipMemoryCard(idx, pairCount) {
+            if (matchLockBoard) return;
+            const card = matchCards[idx];
+            if (!card || card.flipped || card.matched) return;
+
+            audioMgr.playSfx('click');
+            card.flipped = true;
+            document.getElementById(`mcard-${idx}`).classList.add('flipped');
+            flippedIndices.push(idx);
+
+            if (card.kind === 'glyph') {
+                audioMgr.speakLetter(card.letterObj, 'none');
+            }
+
+            if (flippedIndices.length === 2) {
+                matchMoves++;
+                matchLockBoard = true;
+                const [firstIdx, secondIdx] = flippedIndices;
+                const c1 = matchCards[firstIdx];
+                const c2 = matchCards[secondIdx];
+
+                if (c1.pairId === c2.pairId && c1.kind !== c2.kind) {
+                    // Cocok!
+                    setTimeout(() => {
+                        audioMgr.playSfx('correct');
+                        c1.matched = true;
+                        c2.matched = true;
+                        document.getElementById(`mcard-${firstIdx}`).classList.add('matched');
+                        document.getElementById(`mcard-${secondIdx}`).classList.add('matched');
+
+                        matchedCount++;
+                        matchScore += 120;
+                        awardLetterProgress(c1.pairId, { addXp: 15, isCorrect: true });
+                        updateMatchingStats(pairCount);
+
+                        flippedIndices = [];
+                        matchLockBoard = false;
+
+                        if (matchedCount === pairCount) {
+                            handleMatchingWin(pairCount);
+                        }
+                    }, 340);
+                } else {
+                    // Tidak cocok
+                    setTimeout(() => {
+                        audioMgr.playSfx('wrong');
+                        c1.flipped = false;
+                        c2.flipped = false;
+                        document.getElementById(`mcard-${firstIdx}`).classList.remove('flipped');
+                        document.getElementById(`mcard-${secondIdx}`).classList.remove('flipped');
+                        updateMatchingStats(pairCount);
+
+                        flippedIndices = [];
+                        matchLockBoard = false;
+                    }, 820);
+                }
+            } else {
+                updateMatchingStats(pairCount);
+            }
+        }
+
+        function handleMatchingWin(pairCount) {
+            clearInterval(matchTimerId);
+            audioMgr.playSfx('win');
+            launchConfetti();
+
+            const bonus = Math.max(50, 300 - matchMoves * 10);
+            matchScore += bonus;
+            updateMatchingStats(pairCount);
+
+            const player = getActivePlayer();
+            if (player) {
+                player.matchingWins = (player.matchingWins || 0) + 1;
+                player.xp = (player.xp || 0) + 40;
+                saveStore();
+                refreshHeaderAndHome();
+            }
+
+            document.getElementById('matchingWinSummary').textContent =
+                `Selesai dalam ${matchMoves} langkah dan waktu ${formatClock(matchSeconds)} • Skor akhir ${matchScore} (+40 XP bonus)!`;
+            document.getElementById('matchingWinBanner').classList.remove('hidden');
+        }
+
+        document.getElementById('matchingPairsSelect').addEventListener('change', () => {
+            audioMgr.playSfx('click');
+            initMatchingGame();
+        });
+
+        document.getElementById('matchingRestartBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            initMatchingGame();
+        });
+
+        document.getElementById('matchingPlayNextBtn').addEventListener('click', () => {
+            audioMgr.playSfx('click');
+            initMatchingGame();
+        });
+
+        /**
+         * =====================================================================
+         * 10. TOMBOL MUTE & INISIALISASI APLIKASI
+         * =====================================================================
+         */
+        document.getElementById('muteToggleBtn').addEventListener('click', () => {
+            audioMgr.muted = !audioMgr.muted;
+            document.getElementById('muteIcon').textContent = audioMgr.muted ? '🔇' : '🔊';
+            if (!audioMgr.muted) {
+                audioMgr.playSfx('click');
+                showToast('Suara diaktifkan');
+            } else {
+                showToast('Suara dimatikan');
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStore();
+            refreshHeaderAndHome();
+            renderMasteryGrid();
+            switchView('home');
+
+            if (!getActivePlayer()) {
+                openPlayerModal(true);
+            }
+        });
+    </script>
+</body>
+</html>
